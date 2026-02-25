@@ -53,11 +53,14 @@ export async function POST(request: NextRequest) {
     });
     const processedSet = new Set(processedIds.map((p) => p.messageId));
 
-    // Store unprocessed emails as pending
+    // Store unprocessed emails as pending (deduplicate by messageId)
     let pendingCount = 0;
+    const insertedIds = new Set<string>();
 
     for (const email of whitelistEmails) {
       if (processedSet.has(email.messageId)) continue;
+      if (insertedIds.has(email.messageId)) continue;
+      insertedIds.add(email.messageId);
 
       const knownSender = senderLookup.get(email.from.toLowerCase());
       const pdfPassword = knownSender?.pdfPasswordEnvVar
@@ -69,35 +72,49 @@ export async function POST(request: NextRequest) {
         contentBase64: att.content.toString("base64"),
       }));
 
-      await prisma.pendingEmail.create({
-        data: {
-          messageId: email.messageId,
-          subject: email.subject,
-          sender: email.from,
-          textContent: email.text,
-          htmlContent: email.html,
-          attachments: JSON.stringify(attachmentsJson),
-          source: "whitelist",
-          senderName: knownSender?.name,
-          categoryHint: knownSender?.category,
-          pdfPassword,
-        },
+      const data = {
+        messageId: email.messageId,
+        subject: email.subject,
+        sender: email.from,
+        textContent: email.text,
+        htmlContent: email.html,
+        attachments: JSON.stringify(attachmentsJson),
+        source: "whitelist",
+        senderName: knownSender?.name,
+        categoryHint: knownSender?.category,
+        pdfPassword,
+      };
+
+      await prisma.pendingEmail.upsert({
+        where: { messageId: email.messageId },
+        update: data,
+        create: data,
       });
       pendingCount++;
     }
 
     for (const email of keywordEmails) {
       if (processedSet.has(email.messageId)) continue;
+      if (insertedIds.has(email.messageId)) continue;
+      insertedIds.add(email.messageId);
 
-      await prisma.pendingEmail.create({
-        data: {
-          messageId: email.messageId,
-          subject: email.subject,
-          sender: email.from,
-          textContent: email.text,
-          htmlContent: email.html,
-          source: "keyword",
-        },
+      const data = {
+        messageId: email.messageId,
+        subject: email.subject,
+        sender: email.from,
+        textContent: email.text,
+        htmlContent: email.html,
+        attachments: "[]",
+        source: "keyword",
+        senderName: null as string | null,
+        categoryHint: null as string | null,
+        pdfPassword: null as string | null,
+      };
+
+      await prisma.pendingEmail.upsert({
+        where: { messageId: email.messageId },
+        update: data,
+        create: data,
       });
       pendingCount++;
     }
