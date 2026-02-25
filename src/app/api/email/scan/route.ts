@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { fetchEmailsFromSenders } from "@/lib/gmail";
-import { parseEmailWithGemini } from "@/lib/gemini";
+import { parseEmailWithGemini, GEMINI_DELAY_MS } from "@/lib/gemini";
 import { extractTextFromPDF } from "@/lib/pdf";
 import { KNOWN_SENDERS } from "@/lib/email-senders";
 
@@ -63,7 +63,14 @@ export async function POST(request: NextRequest) {
     // 5. Process each unprocessed email
     const unprocessed = emails.filter((e) => !processedSet.has(e.messageId));
 
-    for (const email of unprocessed) {
+    for (let i = 0; i < unprocessed.length; i++) {
+      const email = unprocessed[i];
+
+      // Rate limit: wait between Gemini calls to stay under free tier limits
+      if (i > 0) {
+        await new Promise((r) => setTimeout(r, GEMINI_DELAY_MS));
+      }
+
       try {
         const knownSender = senderLookup.get(email.from.toLowerCase());
 

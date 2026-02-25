@@ -17,6 +17,39 @@ export interface ParsedExpense {
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+async function callGeminiWithRetry(
+  model: ReturnType<typeof genAI.getGenerativeModel>,
+  prompt: string,
+  maxRetries: number = 3
+): Promise<string> {
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      const result = await model.generateContent(prompt);
+      return result.response.text().trim();
+    } catch (error: unknown) {
+      const errMsg =
+        error instanceof Error ? error.message : String(error);
+      const is429 = errMsg.includes("429") || errMsg.includes("Too Many Requests");
+
+      if (is429 && attempt < maxRetries) {
+        const waitTime = Math.pow(2, attempt + 1) * 5000; // 10s, 20s, 40s
+        console.log(
+          `Gemini rate limit hit, esperando ${waitTime / 1000}s (intento ${attempt + 1}/${maxRetries})...`
+        );
+        await sleep(waitTime);
+        continue;
+      }
+      throw error;
+    }
+  }
+  throw new Error("Max retries exceeded");
+}
+
+// Delay between calls to stay under 15 RPM free tier limit
+export const GEMINI_DELAY_MS = 5000;
+
 export async function parseEmailWithGemini(
   subject: string,
   body: string,
@@ -74,8 +107,7 @@ Reglas:
 - currency debe ser "ARS" o "USD"
 - confidence es un número entre 0 y 1 indicando qué tan seguro estás`;
 
-  const result = await model.generateContent(prompt);
-  const text = result.response.text().trim();
+  const text = await callGeminiWithRetry(model, prompt);
 
   try {
     const cleaned = text
