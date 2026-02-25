@@ -91,7 +91,21 @@ async function seed() {
       await client.execute(stmt);
     }
 
-    // Step 2: Seed categories
+    // Step 2: Migrate existing tables (add new columns if missing)
+    const migrations = [
+      `ALTER TABLE "Expense" ADD COLUMN "source" TEXT NOT NULL DEFAULT 'manual'`,
+      `ALTER TABLE "Expense" ADD COLUMN "emailMessageId" TEXT`,
+    ];
+
+    for (const migration of migrations) {
+      try {
+        await client.execute(migration);
+      } catch {
+        // Column already exists, ignore
+      }
+    }
+
+    // Step 3: Seed categories
     let seeded = 0;
     for (const cat of categories) {
       const id = cat.name.toLowerCase().replace(/\s+/g, "-");
