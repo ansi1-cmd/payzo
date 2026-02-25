@@ -1,3 +1,5 @@
+const PDF_TIMEOUT_MS = 15_000;
+
 export async function extractTextFromPDF(
   buffer: Buffer,
   password?: string
@@ -10,7 +12,12 @@ export async function extractTextFromPDF(
   });
 
   try {
-    const result = await parser.getText();
+    const result = await Promise.race([
+      parser.getText(),
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("PDF extraction timeout")), PDF_TIMEOUT_MS)
+      ),
+    ]);
     return result.text;
   } finally {
     await parser.destroy();

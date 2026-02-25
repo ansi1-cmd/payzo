@@ -22,7 +22,7 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 async function callGeminiWithRetry(
   model: ReturnType<typeof genAI.getGenerativeModel>,
   prompt: string,
-  maxRetries: number = 3
+  maxRetries: number = 2
 ): Promise<string> {
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
@@ -34,7 +34,7 @@ async function callGeminiWithRetry(
       const is429 = errMsg.includes("429") || errMsg.includes("Too Many Requests");
 
       if (is429 && attempt < maxRetries) {
-        const waitTime = Math.pow(2, attempt + 1) * 5000; // 10s, 20s, 40s
+        const waitTime = (attempt + 1) * 2000; // 2s, 4s
         console.log(
           `Gemini rate limit hit, esperando ${waitTime / 1000}s (intento ${attempt + 1}/${maxRetries})...`
         );
