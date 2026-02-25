@@ -58,12 +58,7 @@ const categories = [
   { name: "Otro", icon: "ellipsis", color: "#94a3b8" },
 ];
 
-export async function POST(request: NextRequest) {
-  const secret = request.headers.get("x-seed-secret");
-  if (process.env.SEED_SECRET && secret !== process.env.SEED_SECRET) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
+async function seed() {
   try {
     const url = process.env.TURSO_DATABASE_URL ?? "file:prisma/dev.db";
     const authToken = process.env.TURSO_AUTH_TOKEN;
@@ -101,4 +96,16 @@ export async function POST(request: NextRequest) {
     const message = error instanceof Error ? error.message : "Unknown error";
     return NextResponse.json({ error: message, success: false }, { status: 500 });
   }
+}
+
+export async function GET() {
+  return seed();
+}
+
+export async function POST(request: NextRequest) {
+  const secret = request.headers.get("x-seed-secret");
+  if (process.env.SEED_SECRET && secret !== process.env.SEED_SECRET) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  return seed();
 }
