@@ -21,7 +21,8 @@ export async function parseEmailWithGemini(
   subject: string,
   body: string,
   from: string,
-  categories: Category[]
+  categories: Category[],
+  options?: { pdfContent?: string; senderName?: string; categoryHint?: string }
 ): Promise<ParsedExpense> {
   const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
@@ -29,14 +30,24 @@ export async function parseEmailWithGemini(
     .map((c) => `- id: "${c.id}", nombre: "${c.name}"`)
     .join("\n");
 
+  let contentSection = `**Contenido del email:**\n${body.slice(0, 3000)}`;
+
+  if (options?.pdfContent) {
+    contentSection += `\n\n**Contenido del PDF adjunto:**\n${options.pdfContent.slice(0, 5000)}`;
+  }
+
+  const senderHint = options?.senderName
+    ? `\nNota: Este email es de **${options.senderName}**${options.categoryHint ? `, que normalmente corresponde a la categoría "${options.categoryHint}"` : ""}.`
+    : "";
+
   const prompt = `Sos un asistente que analiza emails para detectar facturas, boletas, resúmenes de cuenta, o cualquier notificación de pago/cobro.
 
 Analiza el siguiente email y determiná si es una factura, boleta, resumen de tarjeta, aviso de vencimiento, o notificación de cobro.
 
 **De:** ${from}
 **Asunto:** ${subject}
-**Contenido:**
-${body.slice(0, 3000)}
+${contentSection}
+${senderHint}
 
 **Categorías disponibles:**
 ${categoryList}

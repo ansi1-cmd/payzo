@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { fetchRecentEmails } from "@/lib/gmail";
+import { fetchEmailsFromSenders } from "@/lib/gmail";
 import { parseEmailWithGemini } from "@/lib/gemini";
+import { extractTextFromPDF } from "@/lib/pdf";
+import { KNOWN_SENDERS } from "@/lib/email-senders";
 
 interface ScanResult {
   messageId: string;
@@ -15,7 +17,6 @@ interface ScanResult {
 }
 
 export async function POST(request: NextRequest) {
-  // Validate that email scanning is configured
   if (!process.env.GMAIL_USER || !process.env.GMAIL_APP_PASSWORD) {
     return NextResponse.json(
       { error: "Gmail no está configurado" },
@@ -31,13 +32,14 @@ export async function POST(request: NextRequest) {
   }
 
   const body = await request.json().catch(() => ({}));
-  const daysBack = (body as { daysBack?: number }).daysBack || 7;
+  const daysBack = (body as { daysBack?: number }).daysBack || 30;
 
   const results: ScanResult[] = [];
 
   try {
-    // 1. Fetch recent emails from Gmail
-    const emails = await fetchRecentEmails(daysBack);
+    // 1. Fetch emails only from known senders (read + unread)
+    const senderEmails = KNOWN_SENDERS.map((s) => s.email);
+    const emails = await fetchEmailsFromSenders(senderEmails, daysBack);
 
     // 2. Get already processed message IDs
     const processedIds = await prisma.processedEmail.findMany({
@@ -53,21 +55,52 @@ export async function POST(request: NextRequest) {
       select: { id: true, name: true },
     });
 
-    // 4. Process each unprocessed email
+    // 4. Build sender lookup (case-insensitive)
+    const senderLookup = new Map(
+      KNOWN_SENDERS.map((s) => [s.email.toLowerCase(), s])
+    );
+
+    // 5. Process each unprocessed email
     const unprocessed = emails.filter((e) => !processedSet.has(e.messageId));
 
     for (const email of unprocessed) {
       try {
-        // Parse with Gemini
+        const knownSender = senderLookup.get(email.from.toLowerCase());
+
+        // Extract PDF text if the email has attachments
+        let pdfContent: string | undefined;
+        if (email.attachments.length > 0) {
+          const pdfPassword = knownSender?.pdfPasswordEnvVar
+            ? process.env[knownSender.pdfPasswordEnvVar]
+            : undefined;
+
+          for (const att of email.attachments) {
+            try {
+              const text = await extractTextFromPDF(att.content, pdfPassword);
+              pdfContent = (pdfContent || "") + text;
+            } catch (pdfError) {
+              console.error(
+                `Error extrayendo PDF "${att.filename}" de ${email.from}:`,
+                pdfError instanceof Error ? pdfError.message : pdfError
+              );
+            }
+          }
+        }
+
+        // Parse with Gemini (with PDF content and sender hints)
         const parsed = await parseEmailWithGemini(
           email.subject,
           email.text || email.html,
           email.from,
-          categories
+          categories,
+          {
+            pdfContent,
+            senderName: knownSender?.name,
+            categoryHint: knownSender?.category,
+          }
         );
 
         if (!parsed.isInvoice) {
-          // Not an invoice - record and skip
           await prisma.processedEmail.create({
             data: {
               messageId: email.messageId,
@@ -109,7 +142,6 @@ export async function POST(request: NextRequest) {
           },
         });
 
-        // Record as processed
         await prisma.processedEmail.create({
           data: {
             messageId: email.messageId,
@@ -166,7 +198,6 @@ export async function POST(request: NextRequest) {
 
 // GET handler for Vercel Cron
 export async function GET(request: NextRequest) {
-  // Verify cron secret for security
   const authHeader = request.headers.get("authorization");
   if (
     process.env.CRON_SECRET &&
@@ -175,10 +206,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  // Reuse POST logic with default 7 days
   const fakeRequest = new NextRequest(request.url, {
     method: "POST",
-    body: JSON.stringify({ daysBack: 7 }),
+    body: JSON.stringify({ daysBack: 30 }),
   });
 
   return POST(fakeRequest);
