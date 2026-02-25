@@ -11,6 +11,7 @@ export function formatDate(date: Date | string): string {
     day: "2-digit",
     month: "short",
     year: "numeric",
+    timeZone: "UTC",
   }).format(new Date(date));
 }
 
@@ -18,5 +19,6 @@ export function formatShortDate(date: Date | string): string {
   return new Intl.DateTimeFormat("es-AR", {
     day: "2-digit",
     month: "short",
+    timeZone: "UTC",
   }).format(new Date(date));
 }

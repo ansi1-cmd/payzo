@@ -13,7 +13,7 @@ export async function PATCH(
   if (body.amount !== undefined) data.amount = body.amount;
   if (body.currency !== undefined) data.currency = body.currency;
   if (body.categoryId !== undefined) data.categoryId = body.categoryId;
-  if (body.dueDate !== undefined) data.dueDate = new Date(body.dueDate);
+  if (body.dueDate !== undefined) data.dueDate = new Date(body.dueDate + "T12:00:00Z");
   if (body.notes !== undefined) data.notes = body.notes;
   if (body.paid !== undefined) {
     data.paid = body.paid;

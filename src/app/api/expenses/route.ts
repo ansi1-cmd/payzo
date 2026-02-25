@@ -10,8 +10,9 @@ export async function GET(request: NextRequest) {
   const where: Record<string, unknown> = {};
 
   if (month && year) {
-    const startDate = new Date(Number(year), Number(month) - 1, 1);
-    const endDate = new Date(Number(year), Number(month), 0, 23, 59, 59);
+    const startDate = new Date(Date.UTC(Number(year), Number(month) - 1, 1, 0, 0, 0));
+    const lastDay = new Date(Date.UTC(Number(year), Number(month), 0)).getUTCDate();
+    const endDate = new Date(Date.UTC(Number(year), Number(month) - 1, lastDay, 23, 59, 59));
     where.dueDate = { gte: startDate, lte: endDate };
   }
 
@@ -37,7 +38,7 @@ export async function POST(request: NextRequest) {
       amount: body.amount,
       currency: body.currency || "ARS",
       categoryId: body.categoryId,
-      dueDate: new Date(body.dueDate),
+      dueDate: new Date(body.dueDate + "T12:00:00Z"),
       paid: body.paid || false,
       paidDate: body.paid ? new Date() : null,
       notes: body.notes || null,

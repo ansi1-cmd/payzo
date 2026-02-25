@@ -13,17 +13,17 @@ export async function POST(request: NextRequest) {
   const created = [];
 
   for (const rec of activeRecurring) {
-    const lastDay = new Date(year, month, 0).getDate();
+    const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
     const day = Math.min(rec.dayOfMonth, lastDay);
-    const dueDate = new Date(year, month - 1, day);
+    const dueDate = new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
 
     const existing = await prisma.expense.findFirst({
       where: {
         description: rec.description,
         categoryId: rec.categoryId,
         dueDate: {
-          gte: new Date(year, month - 1, 1),
-          lte: new Date(year, month - 1, lastDay, 23, 59, 59),
+          gte: new Date(Date.UTC(year, month - 1, 1, 0, 0, 0)),
+          lte: new Date(Date.UTC(year, month - 1, lastDay, 23, 59, 59)),
         },
       },
     });
