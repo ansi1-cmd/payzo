@@ -39,6 +39,23 @@ CREATE TABLE IF NOT EXISTS "ProcessedEmail" (
 
 CREATE UNIQUE INDEX IF NOT EXISTS "ProcessedEmail_messageId_key" ON "ProcessedEmail"("messageId");
 
+CREATE TABLE IF NOT EXISTS "PendingEmail" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "messageId" TEXT NOT NULL,
+    "subject" TEXT NOT NULL,
+    "sender" TEXT NOT NULL,
+    "textContent" TEXT NOT NULL DEFAULT '',
+    "htmlContent" TEXT NOT NULL DEFAULT '',
+    "attachments" TEXT NOT NULL DEFAULT '[]',
+    "source" TEXT NOT NULL,
+    "senderName" TEXT,
+    "categoryHint" TEXT,
+    "pdfPassword" TEXT,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS "PendingEmail_messageId_key" ON "PendingEmail"("messageId");
+
 CREATE TABLE IF NOT EXISTS "RecurringExpense" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "description" TEXT NOT NULL,
