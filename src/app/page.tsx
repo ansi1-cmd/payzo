@@ -63,6 +63,7 @@ export default function DashboardPage() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [scanning, setScanning] = useState(false);
+  const [scanStatus, setScanStatus] = useState<string | null>(null);
   const [scanResult, setScanResult] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
@@ -80,20 +81,76 @@ export default function DashboardPage() {
   const scanEmails = async () => {
     setScanning(true);
     setScanResult(null);
+    setScanStatus("Buscando emails...");
+
     try {
-      const res = await fetch("/api/email/scan", { method: "POST" });
-      const json = await res.json();
-      if (res.ok) {
-        setScanResult(json.message);
-        if (json.created > 0) fetchData();
-      } else {
-        setScanResult(json.error || "Error al escanear");
+      // Step 1: Fetch emails from IMAP
+      const fetchRes = await fetch("/api/email/fetch", { method: "POST" });
+      const fetchJson = await fetchRes.json();
+
+      if (!fetchRes.ok) {
+        setScanResult(fetchJson.error || "Error al buscar emails");
+        return;
       }
+
+      if (fetchJson.pending === 0) {
+        setScanResult(
+          `No hay emails nuevos (${fetchJson.skipped} ya procesados)`
+        );
+        return;
+      }
+
+      setScanStatus(
+        `${fetchJson.pending} emails nuevos encontrados. Procesando...`
+      );
+
+      // Step 2: Process one at a time
+      let created = 0;
+      let notInvoice = 0;
+      let errors = 0;
+      let remaining = fetchJson.pending;
+
+      while (remaining > 0) {
+        setScanStatus(
+          `Procesando ${remaining} email${remaining > 1 ? "s" : ""} restante${remaining > 1 ? "s" : ""}...`
+        );
+
+        const processRes = await fetch("/api/email/process", {
+          method: "POST",
+        });
+        const processJson = await processRes.json();
+
+        if (!processRes.ok) {
+          errors++;
+          remaining--;
+          continue;
+        }
+
+        if (processJson.done) break;
+
+        remaining = processJson.remaining;
+
+        if (processJson.result?.result === "created") {
+          created++;
+        } else if (processJson.result?.result === "not_invoice") {
+          notInvoice++;
+        }
+      }
+
+      const parts: string[] = [];
+      if (created > 0) parts.push(`${created} gasto${created > 1 ? "s" : ""} creado${created > 1 ? "s" : ""}`);
+      if (notInvoice > 0) parts.push(`${notInvoice} no eran facturas`);
+      if (fetchJson.skipped > 0) parts.push(`${fetchJson.skipped} ya procesados`);
+      if (errors > 0) parts.push(`${errors} error${errors > 1 ? "es" : ""}`);
+
+      setScanResult(parts.join(", ") || "Escaneo completado");
+      if (created > 0) fetchData();
     } catch {
-      setScanResult("Error de conexión");
+      setScanResult("Error de conexion");
     } finally {
       setScanning(false);
-      setTimeout(() => setScanResult(null), 5000);
+      setScanStatus(null);
+      setTimeout(() => setScanResult(null), 8000);
     }
   };
 
@@ -155,11 +212,15 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {scanResult && (
+      {(scanStatus || scanResult) && (
         <div className="rounded-lg border bg-muted/50 px-4 py-3 text-sm">
           <div className="flex items-center gap-2">
-            <Mail className="h-4 w-4 text-muted-foreground" />
-            {scanResult}
+            {scanStatus ? (
+              <Loader2 className="h-4 w-4 text-muted-foreground animate-spin" />
+            ) : (
+              <Mail className="h-4 w-4 text-muted-foreground" />
+            )}
+            {scanStatus || scanResult}
           </div>
         </div>
       )}

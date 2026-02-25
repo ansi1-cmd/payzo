@@ -45,6 +45,21 @@ model ProcessedEmail {
   createdAt DateTime @default(now())
 }
 
+model PendingEmail {
+  id          String   @id @default(cuid())
+  messageId   String   @unique
+  subject     String
+  sender      String
+  textContent String   @default("")
+  htmlContent String   @default("")
+  attachments String   @default("[]") // JSON: [{filename, contentBase64}]
+  source      String   // "whitelist" | "keyword"
+  senderName  String?  // hint from KnownSender
+  categoryHint String? // hint from KnownSender
+  pdfPassword String?  // resolved password for PDF attachments
+  createdAt   DateTime @default(now())
+}
+
 model RecurringExpense {
   id          String   @id @default(cuid())
   description String
