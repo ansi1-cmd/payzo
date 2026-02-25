@@ -59,3 +59,16 @@ export const KNOWN_SENDERS: KnownSender[] = [
     category: "Otras suscripciones",
   },
 ];
+
+// Keywords para buscar en asuntos de emails de remitentes desconocidos
+export const SUBJECT_KEYWORDS: string[] = [
+  "factura",
+  "consumo",
+  "pago",
+  "vencimiento",
+  "resumen",
+  "cobro",
+  "boleta",
+  "débito automático",
+  "cuota",
+];
