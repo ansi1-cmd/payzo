@@ -19,18 +19,30 @@ model Category {
 }
 
 model Expense {
-  id          String    @id @default(cuid())
-  description String
-  amount      Float
-  currency    String    @default("ARS")
-  categoryId  String
-  category    Category  @relation(fields: [categoryId], references: [id])
-  dueDate     DateTime
-  paid        Boolean   @default(false)
-  paidDate    DateTime?
-  notes       String?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id             String    @id @default(cuid())
+  description    String
+  amount         Float
+  currency       String    @default("ARS")
+  categoryId     String
+  category       Category  @relation(fields: [categoryId], references: [id])
+  dueDate        DateTime
+  paid           Boolean   @default(false)
+  paidDate       DateTime?
+  notes          String?
+  source         String    @default("manual")
+  emailMessageId String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+}
+
+model ProcessedEmail {
+  id        String   @id @default(cuid())
+  messageId String   @unique
+  subject   String
+  sender    String
+  result    String
+  expenseId String?
+  createdAt DateTime @default(now())
 }
 
 model RecurringExpense {

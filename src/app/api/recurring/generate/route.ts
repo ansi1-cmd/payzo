@@ -36,6 +36,7 @@ export async function POST(request: NextRequest) {
           currency: rec.currency,
           categoryId: rec.categoryId,
           dueDate,
+          source: "recurring",
         },
         include: { category: true },
       });

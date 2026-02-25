@@ -6,12 +6,15 @@ import { Badge } from "@/components/ui/badge";
 import { MonthSelector } from "@/components/month-selector";
 import { CategoryIcon } from "@/components/category-icon";
 import { formatCurrency, formatShortDate } from "@/lib/format";
+import { Button } from "@/components/ui/button";
 import {
   DollarSign,
   CheckCircle,
   Clock,
   AlertTriangle,
   TrendingUp,
+  Mail,
+  Loader2,
 } from "lucide-react";
 import {
   BarChart,
@@ -59,6 +62,8 @@ export default function DashboardPage() {
   const [year, setYear] = useState(now.getFullYear());
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [scanning, setScanning] = useState(false);
+  const [scanResult, setScanResult] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -71,6 +76,26 @@ export default function DashboardPage() {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  const scanEmails = async () => {
+    setScanning(true);
+    setScanResult(null);
+    try {
+      const res = await fetch("/api/email/scan", { method: "POST" });
+      const json = await res.json();
+      if (res.ok) {
+        setScanResult(json.message);
+        if (json.created > 0) fetchData();
+      } else {
+        setScanResult(json.error || "Error al escanear");
+      }
+    } catch {
+      setScanResult("Error de conexión");
+    } finally {
+      setScanning(false);
+      setTimeout(() => setScanResult(null), 5000);
+    }
+  };
 
   if (loading || !data) {
     return (
@@ -105,15 +130,39 @@ export default function DashboardPage() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <h1 className="text-2xl font-bold">Dashboard</h1>
-        <MonthSelector
-          month={month}
-          year={year}
-          onChange={(m, y) => {
-            setMonth(m);
-            setYear(y);
-          }}
-        />
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={scanEmails}
+            disabled={scanning}
+          >
+            {scanning ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <Mail className="h-4 w-4 mr-2" />
+            )}
+            {scanning ? "Escaneando..." : "Escanear emails"}
+          </Button>
+          <MonthSelector
+            month={month}
+            year={year}
+            onChange={(m, y) => {
+              setMonth(m);
+              setYear(y);
+            }}
+          />
+        </div>
       </div>
+
+      {scanResult && (
+        <div className="rounded-lg border bg-muted/50 px-4 py-3 text-sm">
+          <div className="flex items-center gap-2">
+            <Mail className="h-4 w-4 text-muted-foreground" />
+            {scanResult}
+          </div>
+        </div>
+      )}
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">

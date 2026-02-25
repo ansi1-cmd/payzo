@@ -14,6 +14,8 @@ import {
   Pencil,
   Trash2,
   Filter,
+  Mail,
+  Repeat,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -32,6 +34,7 @@ interface Expense {
   paid: boolean;
   paidDate: string | null;
   notes: string | null;
+  source: string;
   category: { id: string; name: string; icon: string; color: string };
 }
 
@@ -202,6 +205,18 @@ export default function GastosPage() {
                       <span className="text-xs text-muted-foreground">
                         Vence {formatDate(expense.dueDate)}
                       </span>
+                      {expense.source === "email" && (
+                        <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 gap-0.5">
+                          <Mail className="h-2.5 w-2.5" />
+                          Auto
+                        </Badge>
+                      )}
+                      {expense.source === "recurring" && (
+                        <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 gap-0.5">
+                          <Repeat className="h-2.5 w-2.5" />
+                          Recurrente
+                        </Badge>
+                      )}
                     </div>
                   </div>
                 </div>

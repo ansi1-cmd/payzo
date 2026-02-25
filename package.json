@@ -16,6 +16,7 @@
     "seed": "npx tsx prisma/seed.ts"
   },
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
     "@libsql/client": "^0.8.1",
     "@prisma/adapter-libsql": "^5.22.0",
     "@prisma/client": "^5.22.0",
@@ -23,7 +24,9 @@
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
     "dotenv": "^17.3.1",
+    "imapflow": "^1.2.10",
     "lucide-react": "^0.575.0",
+    "mailparser": "^3.9.3",
     "next": "16.1.6",
     "prisma": "^5.22.0",
     "radix-ui": "^1.4.3",
@@ -35,6 +38,7 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@types/mailparser": "^3.4.6",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",

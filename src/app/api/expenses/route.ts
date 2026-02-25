@@ -42,6 +42,7 @@ export async function POST(request: NextRequest) {
       paid: body.paid || false,
       paidDate: body.paid ? new Date() : null,
       notes: body.notes || null,
+      source: "manual",
     },
     include: { category: true },
   });

@@ -20,10 +20,24 @@ CREATE TABLE IF NOT EXISTS "Expense" (
     "paid" BOOLEAN NOT NULL DEFAULT false,
     "paidDate" DATETIME,
     "notes" TEXT,
+    "source" TEXT NOT NULL DEFAULT 'manual',
+    "emailMessageId" TEXT,
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" DATETIME NOT NULL,
     CONSTRAINT "Expense_categoryId_fkey" FOREIGN KEY ("categoryId") REFERENCES "Category" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
 );
+
+CREATE TABLE IF NOT EXISTS "ProcessedEmail" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "messageId" TEXT NOT NULL,
+    "subject" TEXT NOT NULL,
+    "sender" TEXT NOT NULL,
+    "result" TEXT NOT NULL,
+    "expenseId" TEXT,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS "ProcessedEmail_messageId_key" ON "ProcessedEmail"("messageId");
 
 CREATE TABLE IF NOT EXISTS "RecurringExpense" (
     "id" TEXT NOT NULL PRIMARY KEY,
