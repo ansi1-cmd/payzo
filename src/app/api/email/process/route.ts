@@ -57,6 +57,10 @@ export async function POST() {
       }
     }
 
+    console.log(
+      `[process] Email: "${pending.subject}" | From: ${pending.sender} | Source: ${pending.source} | PDF: ${pdfContent ? `${pdfContent.length} chars` : "none"}`
+    );
+
     // Parse with LLM
     const parsed = await parseEmailWithLLM(
       pending.subject,
@@ -68,6 +72,10 @@ export async function POST() {
         senderName: pending.senderName || undefined,
         categoryHint: pending.categoryHint || undefined,
       }
+    );
+
+    console.log(
+      `[process] Result: isInvoice=${parsed.isInvoice}${parsed.isInvoice ? ` | ${parsed.description} | $${parsed.amount} ${parsed.currency}` : ""}`
     );
 
     // Delete from pending regardless of result

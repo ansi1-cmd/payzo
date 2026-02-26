@@ -69,7 +69,7 @@ export async function parseEmailWithLLM(
   }
 
   const senderHint = options?.senderName
-    ? `\nNota: Este email es de **${options.senderName}**${options.categoryHint ? `, que normalmente corresponde a la categoría "${options.categoryHint}"` : ""}.`
+    ? `\n**IMPORTANTE: Este email es de un remitente conocido: ${options.senderName}.**${options.categoryHint ? ` Normalmente corresponde a la categoría "${options.categoryHint}".` : ""} Los emails de este remitente casi siempre son facturas, resúmenes o avisos de cobro. Clasificalo como isInvoice: true a menos que sea CLARAMENTE un email de marketing, promoción o notificación irrelevante.`
     : "";
 
   const prompt = `Sos un asistente que analiza emails para detectar facturas, boletas, resúmenes de cuenta, o cualquier notificación de pago/cobro.
@@ -115,6 +115,9 @@ Reglas:
       .trim();
     return JSON.parse(cleaned) as ParsedExpense;
   } catch {
+    console.error(
+      `[llm] Failed to parse LLM response as JSON. Raw response: "${text.slice(0, 500)}"`
+    );
     return { isInvoice: false };
   }
 }
