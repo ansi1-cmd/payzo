@@ -4,7 +4,7 @@ import {
   fetchEmailsFromSenders,
   fetchEmailsByKeywords,
 } from "@/lib/gmail";
-import { parseEmailWithGemini, GEMINI_DELAY_MS } from "@/lib/gemini";
+import { parseEmailWithLLM } from "@/lib/llm";
 import { extractTextFromPDF } from "@/lib/pdf";
 import { KNOWN_SENDERS, SUBJECT_KEYWORDS } from "@/lib/email-senders";
 
@@ -36,9 +36,9 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  if (!process.env.GEMINI_API_KEY) {
+  if (!process.env.GROQ_API_KEY) {
     return NextResponse.json(
-      { error: "Gemini API key no está configurada" },
+      { error: "Groq API key no está configurada" },
       { status: 400 }
     );
   }
@@ -83,10 +83,6 @@ export async function GET(request: NextRequest) {
     for (let i = 0; i < unprocessed.length; i++) {
       const email = unprocessed[i];
 
-      if (i > 0) {
-        await new Promise((r) => setTimeout(r, GEMINI_DELAY_MS));
-      }
-
       try {
         const knownSender = senderLookup.get(email.from.toLowerCase());
 
@@ -106,7 +102,7 @@ export async function GET(request: NextRequest) {
           }
         }
 
-        const parsed = await parseEmailWithGemini(
+        const parsed = await parseEmailWithLLM(
           email.subject,
           email.text || email.html,
           email.from,

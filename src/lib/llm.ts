@@ -1,4 +1,4 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import Groq from "groq-sdk";
 
 interface Category {
   id: string;
@@ -15,28 +15,32 @@ export interface ParsedExpense {
   confidence?: number;
 }
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
+const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-async function callGeminiWithRetry(
-  model: ReturnType<typeof genAI.getGenerativeModel>,
+async function callWithRetry(
   prompt: string,
   maxRetries: number = 2
 ): Promise<string> {
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
-      const result = await model.generateContent(prompt);
-      return result.response.text().trim();
+      const result = await groq.chat.completions.create({
+        model: "llama-3.3-70b-versatile",
+        messages: [{ role: "user", content: prompt }],
+        temperature: 0.2,
+      });
+      return result.choices[0]?.message?.content?.trim() ?? "";
     } catch (error: unknown) {
       const errMsg =
         error instanceof Error ? error.message : String(error);
-      const is429 = errMsg.includes("429") || errMsg.includes("Too Many Requests");
+      const is429 =
+        errMsg.includes("429") || errMsg.includes("Too Many Requests");
 
       if (is429 && attempt < maxRetries) {
         const waitTime = (attempt + 1) * 2000; // 2s, 4s
         console.log(
-          `Gemini rate limit hit, esperando ${waitTime / 1000}s (intento ${attempt + 1}/${maxRetries})...`
+          `Groq rate limit hit, esperando ${waitTime / 1000}s (intento ${attempt + 1}/${maxRetries})...`
         );
         await sleep(waitTime);
         continue;
@@ -47,18 +51,13 @@ async function callGeminiWithRetry(
   throw new Error("Max retries exceeded");
 }
 
-// Delay between calls to stay under 15 RPM free tier limit
-export const GEMINI_DELAY_MS = 5000;
-
-export async function parseEmailWithGemini(
+export async function parseEmailWithLLM(
   subject: string,
   body: string,
   from: string,
   categories: Category[],
   options?: { pdfContent?: string; senderName?: string; categoryHint?: string }
 ): Promise<ParsedExpense> {
-  const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
-
   const categoryList = categories
     .map((c) => `- id: "${c.id}", nombre: "${c.name}"`)
     .join("\n");
@@ -107,7 +106,7 @@ Reglas:
 - currency debe ser "ARS" o "USD"
 - confidence es un número entre 0 y 1 indicando qué tan seguro estás`;
 
-  const text = await callGeminiWithRetry(model, prompt);
+  const text = await callWithRetry(prompt);
 
   try {
     const cleaned = text

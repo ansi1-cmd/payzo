@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { parseEmailWithGemini } from "@/lib/gemini";
+import { parseEmailWithLLM } from "@/lib/llm";
 import { extractTextFromPDF } from "@/lib/pdf";
 
 export const maxDuration = 60;
@@ -11,9 +11,9 @@ interface StoredAttachment {
 }
 
 export async function POST() {
-  if (!process.env.GEMINI_API_KEY) {
+  if (!process.env.GROQ_API_KEY) {
     return NextResponse.json(
-      { error: "Gemini API key no está configurada" },
+      { error: "Groq API key no está configurada" },
       { status: 400 }
     );
   }
@@ -57,8 +57,8 @@ export async function POST() {
       }
     }
 
-    // Parse with Gemini
-    const parsed = await parseEmailWithGemini(
+    // Parse with LLM
+    const parsed = await parseEmailWithLLM(
       pending.subject,
       pending.textContent || pending.htmlContent,
       pending.sender,
